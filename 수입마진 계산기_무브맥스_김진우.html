@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>수입 마진 계산기 — 신항 vs 북항</title>
+<style>
+  :root {
+    --bg: #F5F6F8;
+    --surface: #FFFFFF;
+    --surface-soft: #EEF1F5;
+    --ink: #1C1F26;
+    --ink-soft: #565C68;
+    --ink-faint: #8A909C;
+    --line: rgba(28, 31, 38, 0.09);
+    --line-strong: rgba(28, 31, 38, 0.18);
+    --accent: #0F6E5C;
+    --accent-soft: #DFF1EC;
+    --accent-deep: #073F34;
+    --danger: #B23A2E;
+    --danger-soft: #FBE7E3;
+    --gold: #92701A;
+    --gold-soft: #F6EEDA;
+    --port-a: #24487A;
+    --port-a-soft: #E3EBF6;
+    --port-a-deep: #12253F;
+    --port-b: #7A4A22;
+    --port-b-soft: #F3E9DC;
+    --port-b-deep: #402612;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .head {
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 28px;
+    align-items: flex-end;
+  }
+  .head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .head .sub { margin-top: 4px; font-size: 12px; color: var(--ink-faint); }
+
+  .rate-box { background: var(--ink); color: #F5F6F8; border-radius: 8px; padding: 16px 20px; min-width: 260px; }
+  .rate-box .rb-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,246,248,0.55); margin-bottom: 8px; }
+  .rate-inputs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+  .rate-field label { display: block; font-size: 10px; color: rgba(245,246,248,0.5); margin-bottom: 4px; }
+  .rate-field input {
+    width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+    color: #F5F6F8; padding: 7px 9px; border-radius: 5px; font-size: 15px; font-weight: 600; text-align: right;
+  }
+  .rate-mul { color: rgba(245,246,248,0.4); padding-top: 16px; }
+  .rate-result { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(245,246,248,0.12); font-size: 12px; text-align: right; }
+  .rate-result b { font-size: 14px; margin-left: 6px; }
+
+  .cols { display: grid; grid-template-columns: 360px 1fr; gap: 28px; }
+  @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; }
+  .card + .card { margin-top: 18px; }
+  .card-title { font-size: 13px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); color: var(--ink); }
+
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  .f label { display: block; font-size: 11px; color: var(--ink-soft); margin-bottom: 5px; }
+  .f label .u { color: var(--ink-faint); margin-left: 3px; }
+  .f input {
+    width: 100%; padding: 9px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+    font-size: 13px; font-weight: 500; color: var(--ink); text-align: right;
+  }
+  .f input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--surface); }
+  .f.port-a input { border-left: 3px solid var(--port-a); }
+  .f.port-b input { border-left: 3px solid var(--port-b); }
+
+  /* extras */
+  .extras-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 10px; padding-top: 16px; border-top: 1px dashed var(--line-strong); }
+  .extras-head span { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .extras-head span .cnt { font-weight: 400; color: var(--ink-faint); margin-left: 4px; }
+  .add-btn { background: var(--accent); color: #fff; border: none; padding: 6px 12px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .add-btn:hover { background: var(--accent-deep); }
+  .extras-empty { font-size: 11px; color: var(--ink-faint); text-align: center; padding: 14px; background: var(--bg); border-radius: 5px; border: 1px dashed var(--line); }
+  .extra-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr 28px; gap: 6px; margin-bottom: 6px; }
+  .extra-row input, .extra-row select { padding: 7px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; font-size: 11px; width: 100%; }
+  .extra-row select { cursor: pointer; }
+  .extra-del { background: none; border: 1px solid var(--line); border-radius: 5px; color: var(--ink-faint); cursor: pointer; }
+  .extra-del:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+
+  .note { margin-top: 14px; font-size: 10px; color: var(--ink-faint); }
+
+  /* comparison */
+  .cmp-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .cmp-tab { padding: 13px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; color: #fff; }
+  .cmp-tab.a { background: var(--port-a); }
+  .cmp-tab.b { background: var(--port-b); }
+  .cmp-tab .pname { font-weight: 700; font-size: 15px; }
+  .cmp-tab .prate { font-size: 12px; opacity: 0.85; }
+
+  .cmp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .port-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; position: relative; }
+  .port-card.a { border-top: 3px solid var(--port-a); }
+  .port-card.b { border-top: 3px solid var(--port-b); }
+
+  .ops { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .op { background: var(--bg); border-radius: 5px; padding: 10px 11px; }
+  .op .ol { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 3px; }
+  .op .ov { font-size: 17px; font-weight: 700; }
+  .op .ob { font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+
+  .ledger { border-top: 1px solid var(--line); padding-top: 12px; }
+  .lrow { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
+  .lrow.major { font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+  .lrow.major.rev { color: var(--accent-deep); }
+  .lrow.major.cost { color: var(--danger); }
+  .lrow .lab { color: var(--ink-soft); }
+  .lrow.major .lab { color: inherit; }
+  .lrow.sub { font-size: 11px; color: var(--ink-faint); padding: 3px 0; }
+  .lrow.sub .lab::before { content: '↳ '; }
+
+  .margin-box { margin-top: 16px; padding: 16px; border-radius: 6px; position: relative; }
+  .port-card.a .margin-box { background: var(--port-a-soft); }
+  .port-card.b .margin-box { background: var(--port-b-soft); }
+  .margin-box.neg { background: var(--danger-soft) !important; }
+  .margin-box .ml { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; }
+  .port-card.a .margin-box .ml { color: var(--port-a); }
+  .port-card.b .margin-box .ml { color: var(--port-b); }
+  .margin-box.neg .ml { color: var(--danger) !important; }
+  .margin-box .ma { font-size: 24px; font-weight: 700; }
+  .port-card.a .margin-box .ma { color: var(--port-a-deep); }
+  .port-card.b .margin-box .ma { color: var(--port-b-deep); }
+  .margin-box.neg .ma { color: #5C2620 !important; }
+  .margin-box .mm { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 11px; }
+  .margin-box .mm-item .mmk { font-size: 10px; text-transform: uppercase; }
+  .margin-box .mm-item .mmv { font-weight: 700; font-size: 13px; display: block; margin-top: 2px; }
+
+  .annual { margin-top: 12px; padding: 9px 12px; background: rgba(0,0,0,0.04); border-radius: 5px; display: flex; justify-content: space-between; font-size: 11px; }
+  .annual b { font-size: 13px; }
+
+  .badge { position: absolute; top: -8px; right: 14px; background: var(--ink); color: #fff; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em; }
+
+  .summary-bar { margin-top: 18px; padding: 14px 18px; background: var(--gold-soft); border-left: 3px solid var(--gold); border-radius: 5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--ink); }
+  .summary-bar b { color: var(--gold); }
+
+  @media (max-width: 700px) {
+    .fgrid, .cmp-tabs, .cmp-body, .ops { grid-template-columns: 1fr; }
+    .head { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div>
+      <h1>수입 마진 계산기</h1>
+      <div class="sub">부산 신항 vs 북항 · 20FT · 디베닝 · 탱크로리</div>
+    </div>
+    <div class="rate-box">
+      <div class="rb-label">매출 청구 단가</div>
+      <div class="rate-inputs">
+        <div class="rate-field"><label>USD/톤</label><input id="usdPerTon" value="60" /></div>
+        <div class="rate-mul">×</div>
+        <div class="rate-field"><label>환율</label><input id="fx" value="1450" /></div>
+      </div>
+      <div class="rate-result">톤당 매출 <b id="revenuePerTon">87,000원</b></div>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <div>
+      <div class="card">
+        <div class="card-title">물량 정보</div>
+        <div class="fgrid">
+          <div class="f"><label>월 물량 <span class="u">톤</span></label><input id="monthlyTons" value="500" /></div>
+          <div class="f"><label>컨테이너당 <span class="u">톤</span></label><input id="tons" value="23" /></div>
+          <div class="f"><label>탱크로리 기본중량 <span class="u">톤</span></label><input id="truckTons" value="26.5" /></div>
+          <div class="f"><label>탱크로리 운송 <span class="u">원/톤</span></label><input id="truckFee" value="45000" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">매입 원가</div>
+        <div class="fgrid">
+          <div class="f" style="grid-column:1/-1"><label>작업료 <span class="u">원/톤 · 디베닝</span></label><input id="workFee" value="13000" /></div>
+          <div class="f port-a"><label>신항 셔틀료 <span class="u">원/대</span></label><input id="shuttleA" value="289700" /></div>
+          <div class="f port-b"><label>북항 셔틀료 <span class="u">원/대</span></label><input id="shuttleB" value="258240" /></div>
+        </div>
+
+        <div class="extras-head">
+          <span>기타 비용<span class="cnt" id="extrasCount">(0)</span></span>
+          <button type="button" class="add-btn" id="addExtraBtn">+ 추가</button>
+        </div>
+        <div id="extrasList"></div>
+
+        <p class="note">셔틀료에는 중량할증이 반영되어 있다고 가정합니다. 보관료는 실비 처리되어 계산에서 제외됩니다.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="cmp-tabs">
+        <div class="cmp-tab a"><span class="pname">신항</span><span class="prate" id="tabA">289,700 원/대</span></div>
+        <div class="cmp-tab b"><span class="pname">북항</span><span class="prate" id="tabB">258,240 원/대</span></div>
+      </div>
+
+      <div class="cmp-body">
+        <div class="port-card a" id="cardA">
+          <div class="ops">
+            <div class="op"><div class="ol">컨테이너</div><div class="ov" id="cnt_a">0대</div><div class="ob" id="cntBasis_a"></div></div>
+            <div class="op"><div class="ol">탱크로리</div><div class="ov" id="trk_a">0대</div><div class="ob" id="trkBasis_a"></div></div>
+          </div>
+          <div class="ledger">
+            <div class="lrow major rev"><span class="lab">매출</span><span id="rev_a">0원</span></div>
+            <div class="lrow major cost"><span class="lab">매입 원가</span><span id="cost_a">0원</span></div>
+            <div class="lrow sub"><span class="lab">작업료</span><span id="work_a">0원</span></div>
+            <div class="lrow sub"><span class="lab">셔틀료</span><span id="shuttle_a">0원</span></div>
+            <div class="lrow sub"><span class="lab">탱크로리</span><span id="truck_a">0원</span></div>
+            <div id="extraRows_a"></div>
+          </div>
+          <div class="margin-box" id="marginBox_a">
+            <div class="ml">월간 마진</div>
+            <div class="ma" id="margin_a">0원</div>
+            <div class="mm">
+              <div class="mm-item"><span class="mmk">마진율</span><span class="mmv" id="marginRate_a">0%</span></div>
+              <div class="mm-item"><span class="mmk">톤당</span><span class="mmv" id="marginPerTon_a">0원</span></div>
+            </div>
+          </div>
+          <div class="annual"><span>연간(×12)</span><b id="annual_a">0원</b></div>
+        </div>
+
+        <div class="port-card b" id="cardB">
+          <div class="ops">
+            <div class="op"><div class="ol">컨테이너</div><div class="ov" id="cnt_b">0대</div><div class="ob" id="cntBasis_b"></div></div>
+            <div class="op"><div class="ol">탱크로리</div><div class="ov" id="trk_b">0대</div><div class="ob" id="trkBasis_b"></div></div>
+          </div>
+          <div class="ledger">
+            <div class="lrow major rev"><span class="lab">매출</span><span id="rev_b">0원</span></div>
+            <div class="lrow major cost"><span class="lab">매입 원가</span><span id="cost_b">0원</span></div>
+            <div class="lrow sub"><span class="lab">작업료</span><span id="work_b">0원</span></div>
+            <div class="lrow sub"><span class="lab">셔틀료</span><span id="shuttle_b">0원</span></div>
+            <div class="lrow sub"><span class="lab">탱크로리</span><span id="truck_b">0원</span></div>
+            <div id="extraRows_b"></div>
+          </div>
+          <div class="margin-box" id="marginBox_b">
+            <div class="ml">월간 마진</div>
+            <div class="ma" id="margin_b">0원</div>
+            <div class="mm">
+              <div class="mm-item"><span class="mmk">마진율</span><span class="mmv" id="marginRate_b">0%</span></div>
+              <div class="mm-item"><span class="mmk">톤당</span><span class="mmv" id="marginPerTon_b">0원</span></div>
+            </div>
+          </div>
+          <div class="annual"><span>연간(×12)</span><b id="annual_b">0원</b></div>
+        </div>
+      </div>
+
+      <div class="summary-bar">
+        <span id="deltaText">— 항이 월 — 원 유리</span>
+        <span>연간 차액 <b id="deltaAnnual">0원</b></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  const fmt = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  const fmtPlain = (n) => Math.round(n).toLocaleString('ko-KR');
+  const NUMERIC_IDS = ['monthlyTons','tons','truckTons','usdPerTon','fx','workFee','shuttleA','shuttleB','truckFee'];
+
+  function formatWithCommas(str) {
+    let cleaned = String(str).replace(/[^0-9.\-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') return cleaned;
+    const parts = cleaned.split('.');
+    let intPart = parts[0];
+    const decPart = parts.length > 1 ? '.' + parts.slice(1).join('') : '';
+    let neg = '';
+    if (intPart.startsWith('-')) { neg = '-'; intPart = intPart.slice(1); }
+    if (intPart) intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return neg + intPart + decPart;
+  }
+
+  function parseFormatted(str) {
+    if (str == null) return 0;
+    return parseFloat(String(str).replace(/,/g, '')) || 0;
+  }
+
+  function applyCommaFormat(input) {
+    input.value = formatWithCommas(input.value);
+    input.addEventListener('input', (e) => {
+      const cursorPos = e.target.selectionStart;
+      const oldValue = e.target.value;
+      const digitsBeforeCursor = (oldValue.slice(0, cursorPos).match(/[\d.\-]/g) || []).length;
+      const formatted = formatWithCommas(oldValue);
+      if (formatted === oldValue) return;
+      e.target.value = formatted;
+      let newPos = 0, count = 0;
+      for (let i = 0; i < formatted.length; i++) {
+        if (/[\d.\-]/.test(formatted[i])) {
+          count++;
+          if (count === digitsBeforeCursor) { newPos = i + 1; break; }
+        }
+      }
+      if (digitsBeforeCursor === 0) newPos = 0;
+      try { e.target.setSelectionRange(newPos, newPos); } catch (err) {}
+    });
+  }
+
+  NUMERIC_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) applyCommaFormat(el);
+  });
+
+  // ===== 기타 비용 =====
+  let extras = [];
+  let nextId = 1;
+  const UNIT_OPTIONS = [
+    { value: 'month', label: '원/월 (고정)' },
+    { value: 'ton', label: '원/톤' },
+    { value: 'container', label: '원/대 (컨테이너)' },
+    { value: 'truck', label: '원/대 (탱크로리)' }
+  ];
+
+  function addExtra(name = '', amount = 0, unit = 'month') {
+    extras.push({ id: nextId++, name, amount, unit });
+    renderExtras();
+    calc();
+  }
+  function removeExtra(id) { extras = extras.filter(e => e.id !== id); renderExtras(); calc(); }
+  function updateExtra(id, field, value) {
+    const item = extras.find(e => e.id === id);
+    if (!item) return;
+    item[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+    calc();
+  }
+
+  document.getElementById('addExtraBtn').addEventListener('click', () => addExtra());
+
+  function renderExtras() {
+    const list = document.getElementById('extrasList');
+    document.getElementById('extrasCount').textContent = `(${extras.length})`;
+    if (extras.length === 0) {
+      list.innerHTML = '<div class="extras-empty">통관료, 보험료 등 항목을 + 추가로 등록하세요</div>';
+      return;
+    }
+    list.innerHTML = '';
+    extras.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'extra-row';
+
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = '항목명';
+      nameInput.value = item.name;
+      nameInput.addEventListener('input', e => updateExtra(item.id, 'name', e.target.value));
+
+      const amountInput = document.createElement('input');
+      amountInput.type = 'text';
+      amountInput.placeholder = '0';
+      amountInput.value = item.amount ? formatWithCommas(String(item.amount)) : '';
+      applyCommaFormat(amountInput);
+      amountInput.addEventListener('input', e => updateExtra(item.id, 'amount', parseFormatted(e.target.value)));
+
+      const unitSelect = document.createElement('select');
+      UNIT_OPTIONS.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value; o.textContent = opt.label;
+        if (opt.value === item.unit) o.selected = true;
+        unitSelect.appendChild(o);
+      });
+      unitSelect.addEventListener('change', e => updateExtra(item.id, 'unit', e.target.value));
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button'; delBtn.className = 'extra-del'; delBtn.innerHTML = '×';
+      delBtn.addEventListener('click', () => removeExtra(item.id));
+
+      row.appendChild(nameInput);
+      row.appendChild(amountInput);
+      row.appendChild(unitSelect);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+
+  function extraAmount(extra, monthlyTons, containers, trucks) {
+    const amt = parseFloat(extra.amount) || 0;
+    if (extra.unit === 'ton') return amt * monthlyTons;
+    if (extra.unit === 'container') return amt * containers;
+    if (extra.unit === 'truck') return amt * trucks;
+    return amt;
+  }
+  function extrasTotal(monthlyTons, containers, trucks) {
+    return extras.reduce((sum, e) => sum + extraAmount(e, monthlyTons, containers, trucks), 0);
+  }
+
+  const UNIT_TAG = { month: '월', ton: '톤', container: '컨', truck: '탱' };
+  function renderExtraRows(suffix, monthlyTons, containers, trucks) {
+    const box = document.getElementById('extraRows_' + suffix);
+    box.innerHTML = '';
+    extras.forEach(e => {
+      const amount = extraAmount(e, monthlyTons, containers, trucks);
+      const row = document.createElement('div');
+      row.className = 'lrow sub';
+      const name = (e.name && e.name.trim()) ? e.name.trim() : '(미입력)';
+      row.innerHTML = `<span class="lab">${escapeHtml(name)} <span style="color:var(--ink-faint);font-size:10px;">[${UNIT_TAG[e.unit] || ''}]</span></span><span>${fmt(amount)}</span>`;
+      box.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ===== 계산 로직 =====
+  function computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttle, truckFee) {
+    const containers = tons > 0 ? Math.ceil(monthlyTons / tons) : 0;
+    const trucks = truckTons > 0 ? Math.ceil(monthlyTons / truckTons) : 0;
+    const revenue = monthlyTons * usd * fx;
+    const workTotal = monthlyTons * work;
+    const shuttleTotal = containers * shuttle;
+    const truckTotal = trucks * truckTons * truckFee;
+    const extras_ = extrasTotal(monthlyTons, containers, trucks);
+    const cost = workTotal + shuttleTotal + truckTotal + extras_;
+    const margin = revenue - cost;
+    const marginRate = revenue > 0 ? (margin / revenue) * 100 : 0;
+    const marginPerTon = monthlyTons > 0 ? margin / monthlyTons : 0;
+    return { containers, trucks, revenue, workTotal, shuttleTotal, truckTotal, extras_, cost, margin, marginRate, marginPerTon };
+  }
+
+  function renderPort(suffix, r, monthlyTons, tons, truckTons) {
+    document.getElementById('cnt_' + suffix).textContent = r.containers + '대';
+    document.getElementById('cntBasis_' + suffix).textContent = `${monthlyTons} ÷ ${tons}`;
+    document.getElementById('trk_' + suffix).textContent = r.trucks + '대';
+    document.getElementById('trkBasis_' + suffix).textContent = `${monthlyTons} ÷ ${truckTons}`;
+    document.getElementById('rev_' + suffix).textContent = fmt(r.revenue);
+    document.getElementById('cost_' + suffix).textContent = fmt(r.cost);
+    document.getElementById('work_' + suffix).textContent = fmt(r.workTotal);
+    document.getElementById('shuttle_' + suffix).textContent = fmt(r.shuttleTotal);
+    document.getElementById('truck_' + suffix).textContent = fmt(r.truckTotal);
+    renderExtraRows(suffix, monthlyTons, r.containers, r.trucks);
+    document.getElementById('margin_' + suffix).textContent = fmt(r.margin);
+    document.getElementById('marginRate_' + suffix).textContent = r.marginRate.toFixed(1) + '%';
+    document.getElementById('marginPerTon_' + suffix).textContent = fmt(r.marginPerTon);
+    document.getElementById('annual_' + suffix).textContent = fmt(r.margin * 12);
+
+    const box = document.getElementById('marginBox_' + suffix);
+    if (r.margin < 0) box.classList.add('neg'); else box.classList.remove('neg');
+  }
+
+  function calc() {
+    const monthlyTons = parseFormatted(document.getElementById('monthlyTons').value);
+    const tons = parseFormatted(document.getElementById('tons').value);
+    const truckTons = parseFormatted(document.getElementById('truckTons').value);
+    const usd = parseFormatted(document.getElementById('usdPerTon').value);
+    const fx = parseFormatted(document.getElementById('fx').value);
+    const work = parseFormatted(document.getElementById('workFee').value);
+    const shuttleA = parseFormatted(document.getElementById('shuttleA').value);
+    const shuttleB = parseFormatted(document.getElementById('shuttleB').value);
+    const truckFee = parseFormatted(document.getElementById('truckFee').value);
+
+    document.getElementById('revenuePerTon').textContent = fmt(usd * fx);
+    document.getElementById('tabA').textContent = fmtPlain(shuttleA) + ' 원/대';
+    document.getElementById('tabB').textContent = fmtPlain(shuttleB) + ' 원/대';
+
+    const a = computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttleA, truckFee);
+    const b = computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttleB, truckFee);
+
+    renderPort('a', a, monthlyTons, tons, truckTons);
+    renderPort('b', b, monthlyTons, tons, truckTons);
+
+    document.querySelectorAll('.badge').forEach(el => el.remove());
+    if (a.margin !== b.margin) {
+      const winner = a.margin > b.margin ? 'a' : 'b';
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = '★ Better';
+      document.getElementById('marginBox_' + winner).appendChild(badge);
+    }
+
+    const diff = Math.abs(a.margin - b.margin);
+    const better = a.margin > b.margin ? '신항' : (b.margin > a.margin ? '북항' : '동일');
+    document.getElementById('deltaText').textContent = better === '동일'
+      ? '두 항의 마진이 동일합니다'
+      : `${better}이 월 ${fmt(diff)} 더 유리`;
+    document.getElementById('deltaAnnual').textContent = fmt(diff * 12);
+  }
+
+  NUMERIC_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calc);
+  });
+
+  renderExtras();
+  calc();
+})();
+</script>
+</body>
+</html>
