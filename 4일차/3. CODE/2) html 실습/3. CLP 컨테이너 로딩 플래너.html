@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CLP 컨테이너 로딩 플래너</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface-soft: #EFEBE3;
+    --ink: #1A1A1A;
+    --ink-soft: #5C5A55;
+    --ink-faint: #8E8B83;
+    --line: rgba(26, 26, 26, 0.08);
+    --line-strong: rgba(26, 26, 26, 0.15);
+    --accent: #1B5E4A;
+    --accent-soft: #E1EFE9;
+    --accent-deep: #0D3D2E;
+    --warm: #B5532E;
+    --warm-soft: #FBEDE5;
+    --danger: #A23F32;
+    --danger-soft: #F8E4E0;
+    --gold: #8A6A1E;
+    --gold-soft: #F5EDD9;
+    --box: #2B4C7A;
+    --box-soft: #E4ECF5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-feature-settings: "ss06";
+  }
+
+  .container { max-width: 1240px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: flex-end;
+  }
+  .header-left .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .header h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; }
+  .header .subtitle { margin-top: 4px; font-size: 12px; color: var(--ink-faint); letter-spacing: 0.05em; }
+
+  .summary-box {
+    background: var(--ink);
+    color: #F7F5F0;
+    border-radius: 4px;
+    padding: 16px 22px;
+    min-width: 300px;
+  }
+  .summary-box .sb-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: rgba(247, 245, 240, 0.6);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .sb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sb-item .sb-k { font-size: 10px; color: rgba(247,245,240,0.5); letter-spacing: 0.05em; text-transform: uppercase; }
+  .sb-item .sb-v { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; margin-top: 2px; }
+
+  /* Layout */
+  .grid { display: grid; grid-template-columns: 400px 1fr; gap: 32px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .section + .section { margin-top: 20px; }
+
+  .section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .section-title .left { display: flex; align-items: center; gap: 12px; }
+  .section-title .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .section-title h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+  .field label { display: block; font-size: 11px; color: var(--ink-soft); margin-bottom: 6px; font-weight: 500; }
+  .field label .unit { color: var(--ink-faint); font-weight: 400; margin-left: 4px; }
+  .field select, .field input {
+    width: 100%;
+    padding: 9px 11px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .field select { font-family: 'Pretendard Variable', Pretendard, sans-serif; cursor: pointer; }
+  .field select:focus, .field input:focus {
+    outline: none; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field select:hover, .field input:hover { border-color: var(--line-strong); }
+
+  .cbm-readout {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: var(--accent-soft);
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--accent-deep);
+    font-weight: 600;
+  }
+  .cbm-readout .value { font-family: 'JetBrains Mono', monospace; }
+
+  /* Cargo rows */
+  .cargo-header-row {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+  }
+  .cargo-title { font-size: 12px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.02em; }
+  .cargo-title .cargo-count { color: var(--ink-faint); font-weight: 400; margin-left: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .add-btn {
+    background: var(--ink); color: #F7F5F0; border: none; padding: 6px 13px; border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; cursor: pointer; letter-spacing: 0.05em;
+    transition: all 0.15s ease;
+  }
+  .add-btn:hover { background: #333; transform: translateY(-1px); }
+
+  .cargo-list { display: flex; flex-direction: column; gap: 12px; }
+  .cargo-card { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 14px; position: relative; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .cargo-card-top { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .cargo-card-top input[type="text"] {
+    flex: 1; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
+    font-family: 'Pretendard Variable', Pretendard, sans-serif; font-size: 13px; font-weight: 500; color: var(--ink);
+  }
+  .cargo-delete {
+    background: transparent; border: 1px solid var(--line); color: var(--ink-faint); cursor: pointer; border-radius: 3px;
+    width: 30px; height: 30px; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; flex-shrink: 0;
+  }
+  .cargo-delete:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+  .cargo-dims { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 8px; }
+  .cargo-dims .dim-field label { font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; display: block; }
+  .cargo-dims input {
+    width: 100%; padding: 7px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); font-weight: 500;
+  }
+  .cargo-dims input:focus, .cargo-card-top input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .cargo-rotate-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-soft); }
+  .cargo-rotate-row input { width: auto; cursor: pointer; }
+
+  .cargo-empty { font-size: 11px; color: var(--ink-faint); font-style: italic; text-align: center; padding: 20px; background: var(--bg); border-radius: 3px; border: 1px dashed var(--line); }
+
+  /* Results */
+  .result-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px 20px; margin-bottom: 12px; border-top: 3px solid var(--box); }
+  .result-card.warn { border-top-color: var(--danger); }
+  .result-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .result-card-head .name { font-size: 14px; font-weight: 600; }
+  .result-card-head .basis { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-faint); }
+
+  .result-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat-card { padding: 10px 11px; border-radius: 3px; background: var(--bg); }
+  .stat-card .stat-label { font-size: 10px; font-weight: 500; margin-bottom: 4px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
+  .stat-card .stat-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+
+  .util-row { margin-bottom: 8px; }
+  .util-row:last-child { margin-bottom: 0; }
+  .util-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-soft); margin-bottom: 4px; }
+  .util-label .pct { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .util-bar { height: 8px; background: var(--surface-soft); border-radius: 4px; overflow: hidden; }
+  .util-fill { height: 100%; border-radius: 4px; transition: width 0.2s ease; }
+  .util-fill.vol { background: var(--box); }
+  .util-fill.weight { background: var(--warm); }
+  .util-fill.over { background: var(--danger); }
+
+  .warn-msg { font-size: 12px; color: var(--danger); background: var(--danger-soft); padding: 8px 12px; border-radius: 3px; margin-top: 8px; }
+
+  /* Overall summary */
+  .overall-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .overall-card { background: var(--bg); border-radius: 4px; padding: 14px 16px; }
+  .overall-card .oc-label { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .overall-card .oc-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--accent-deep); letter-spacing: -0.02em; }
+  .overall-card .oc-sub { font-size: 10px; color: var(--ink-faint); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Visualization */
+  .viz-controls { margin-bottom: 16px; }
+  .viz-controls select { max-width: 280px; }
+  .viz-view { margin-bottom: 20px; }
+  .viz-view-label { font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; letter-spacing: 0.05em; }
+  .viz-svg-wrap { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 16px; overflow-x: auto; }
+  .viz-meta { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; font-size: 11px; color: var(--ink-soft); }
+  .viz-meta b { color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+
+  .footnote { margin-top: 14px; font-size: 10px; color: var(--ink-faint); font-style: italic; line-height: 1.6; padding-left: 10px; border-left: 2px solid var(--line); }
+
+  .footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; font-size: 10px; color: var(--ink-faint); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+
+  @media (max-width: 700px) {
+    body { padding: 20px 14px; }
+    .header { grid-template-columns: 1fr; }
+    .header h1 { font-size: 24px; }
+    .section { padding: 18px; }
+    .form-grid, .cargo-dims { grid-template-columns: 1fr 1fr; }
+    .result-stats { grid-template-columns: 1fr 1fr; }
+    .overall-grid { grid-template-columns: 1fr 1fr; }
+    .summary-box { min-width: auto; }
+  }
+
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="header-left">
+      <div class="eyebrow">CLP · Container Loading Plan</div>
+      <h1>CLP 컨테이너 로딩 플래너</h1>
+      <div class="subtitle">부피(CBM) · 중량 기준 최적 적재 수량 계산</div>
+    </div>
+    <div class="summary-box">
+      <div class="sb-label">선택 컨테이너</div>
+      <div class="sb-grid">
+        <div class="sb-item">
+          <div class="sb-k">내용적</div>
+          <div class="sb-v" id="sbCbm">33.2 CBM</div>
+        </div>
+        <div class="sb-item">
+          <div class="sb-k">최대 적재중량</div>
+          <div class="sb-v" id="sbPayload">28,180 kg</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: Inputs -->
+    <div>
+
+      <div class="section">
+        <div class="section-title">
+          <div class="left"><span class="num">01</span><h2>컨테이너 선택</h2></div>
+        </div>
+        <div class="form-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label>컨테이너 타입</label>
+            <select id="containerType">
+              <option value="20ft">20FT Dry</option>
+              <option value="40ft">40FT Dry</option>
+              <option value="40hc">40FT High Cube</option>
+              <option value="45hc">45FT High Cube</option>
+              <option value="custom">직접입력</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>내부 길이 <span class="unit">cm</span></label>
+            <input type="text" inputmode="decimal" id="cL" value="589.8" />
+          </div>
+          <div class="field">
+            <label>내부 폭 <span class="unit">cm</span></label>
+            <input type="text" inputmode="decimal" id="cW" value="235.2" />
+          </div>
+          <div class="field">
+            <label>내부 높이 <span class="unit">cm</span></label>
+            <input type="text" inputmode="decimal" id="cH" value="239.3" />
+          </div>
+          <div class="field">
+            <label>최대 적재중량 <span class="unit">kg</span></label>
+            <input type="text" inputmode="decimal" id="cPayload" value="28180" />
+          </div>
+        </div>
+        <div class="cbm-readout">
+          <span>내용적 (계산값)</span>
+          <span class="value" id="cbmCalc">33.20 CBM</span>
+        </div>
+        <p class="footnote">
+          내부 치수는 대표적인 표준 규격 근사치입니다. 실제 컨테이너/선사에 따라 다를 수 있으니 직접입력으로 수정하세요.
+        </p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <div class="left"><span class="num">02</span><h2>화물 정보</h2></div>
+        </div>
+        <div class="cargo-header-row">
+          <span class="cargo-title">화물 목록<span class="cargo-count" id="cargoCount">(0)</span></span>
+          <button type="button" class="add-btn" id="addCargoBtn">+ 화물 추가</button>
+        </div>
+        <div class="cargo-list" id="cargoList"></div>
+        <p class="footnote">
+          회전 허용을 체크하면 박스를 가로/세로/높이 축으로 돌려 가장 많이 적재되는 방향을 자동으로 찾습니다.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div>
+
+      <div class="section">
+        <div class="section-title">
+          <div class="left"><span class="num">03</span><h2>화물별 적재 계산</h2></div>
+        </div>
+        <div id="resultsArea"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <div class="left"><span class="num">04</span><h2>전체 요약</h2></div>
+        </div>
+        <div class="overall-grid">
+          <div class="overall-card">
+            <div class="oc-label">총 화물 CBM</div>
+            <div class="oc-value" id="ovCbm">0.00</div>
+            <div class="oc-sub">CBM</div>
+          </div>
+          <div class="overall-card">
+            <div class="oc-label">총 중량</div>
+            <div class="oc-value" id="ovWeight">0</div>
+            <div class="oc-sub">kg</div>
+          </div>
+          <div class="overall-card">
+            <div class="oc-label">필요 컨테이너</div>
+            <div class="oc-value" id="ovContainers">0</div>
+            <div class="oc-sub">대 (화물별 합산)</div>
+          </div>
+          <div class="overall-card">
+            <div class="oc-label">평균 적재율</div>
+            <div class="oc-value" id="ovUtil">0%</div>
+            <div class="oc-sub">부피 기준</div>
+          </div>
+        </div>
+        <p class="footnote">
+          필요 컨테이너 수는 화물 품목별로 전용 컨테이너에 적재한다고 가정한 합산치입니다. 여러 품목을 한 컨테이너에 혼적할 경우 실제 소요 대수는 더 적을 수 있습니다.
+        </p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <div class="left"><span class="num">05</span><h2>적재 시각화</h2></div>
+        </div>
+        <div class="viz-controls">
+          <select id="vizSelect"></select>
+        </div>
+        <div id="vizArea"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    본 계산은 축 정렬(회전 포함) 그리드 적재 기준의 근사치이며, 팔레트/래싱/파손 여유공간은 고려하지 않습니다.
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  const fmtInt = (n) => Math.round(n).toLocaleString('ko-KR');
+  const fmt2 = (n) => (Math.round(n * 100) / 100).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const CONTAINER_PRESETS = {
+    '20ft': { L: 589.8, W: 235.2, H: 239.3, payload: 28180 },
+    '40ft': { L: 1203.2, W: 235.2, H: 239.3, payload: 28600 },
+    '40hc':  { L: 1203.2, W: 235.2, H: 269.0, payload: 28600 },
+    '45hc':  { L: 1355.6, W: 235.2, H: 269.0, payload: 29000 },
+    'custom': null
+  };
+
+  function parseNum(str) {
+    if (str === null || str === undefined) return 0;
+    const v = parseFloat(String(str).replace(/,/g, ''));
+    return isNaN(v) ? 0 : v;
+  }
+
+  // ============= 컨테이너 선택 =============
+  const containerTypeEl = document.getElementById('containerType');
+  const cL = document.getElementById('cL');
+  const cW = document.getElementById('cW');
+  const cH = document.getElementById('cH');
+  const cPayload = document.getElementById('cPayload');
+
+  containerTypeEl.addEventListener('change', () => {
+    const preset = CONTAINER_PRESETS[containerTypeEl.value];
+    if (preset) {
+      cL.value = preset.L;
+      cW.value = preset.W;
+      cH.value = preset.H;
+      cPayload.value = preset.payload;
+    }
+    calc();
+  });
+  [cL, cW, cH, cPayload].forEach(el => el.addEventListener('input', calc));
+
+  function getContainerDims() {
+    return {
+      L: parseNum(cL.value),
+      W: parseNum(cW.value),
+      H: parseNum(cH.value),
+      payload: parseNum(cPayload.value)
+    };
+  }
+
+  // ============= 화물 목록 관리 =============
+  let cargoItems = [];
+  let nextId = 1;
+
+  function addCargo(name = '', l = 100, w = 80, h = 80, weight = 15, qty = 500, rotate = true) {
+    cargoItems.push({ id: nextId++, name, l, w, h, weight, qty, rotate });
+    renderCargo();
+    calc();
+  }
+
+  function removeCargo(id) {
+    cargoItems = cargoItems.filter(c => c.id !== id);
+    renderCargo();
+    calc();
+  }
+
+  function updateCargo(id, field, value) {
+    const item = cargoItems.find(c => c.id === id);
+    if (!item) return;
+    if (field === 'name') item.name = value;
+    else if (field === 'rotate') item.rotate = value;
+    else item[field] = parseNum(value);
+    calc();
+  }
+
+  document.getElementById('addCargoBtn').addEventListener('click', () => addCargo());
+
+  function renderCargo() {
+    const list = document.getElementById('cargoList');
+    document.getElementById('cargoCount').textContent = `(${cargoItems.length})`;
+
+    if (cargoItems.length === 0) {
+      list.innerHTML = '<div class="cargo-empty">+ 화물 추가 버튼으로 품목을 등록하세요</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    cargoItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'cargo-card';
+
+      const top = document.createElement('div');
+      top.className = 'cargo-card-top';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = '품명';
+      nameInput.value = item.name;
+      nameInput.addEventListener('input', (e) => updateCargo(item.id, 'name', e.target.value));
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'cargo-delete';
+      delBtn.innerHTML = '×';
+      delBtn.title = '삭제';
+      delBtn.addEventListener('click', () => removeCargo(item.id));
+      top.appendChild(nameInput);
+      top.appendChild(delBtn);
+
+      const dims = document.createElement('div');
+      dims.className = 'cargo-dims';
+      const dimDefs = [
+        { key: 'l', label: '가로(cm)' },
+        { key: 'w', label: '세로(cm)' },
+        { key: 'h', label: '높이(cm)' },
+        { key: 'weight', label: '중량(kg)' },
+        { key: 'qty', label: '수량(개)' }
+      ];
+      dimDefs.forEach(d => {
+        const wrap = document.createElement('div');
+        wrap.className = 'dim-field';
+        const label = document.createElement('label');
+        label.textContent = d.label;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.value = item[d.key];
+        input.addEventListener('input', (e) => updateCargo(item.id, d.key, e.target.value));
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        dims.appendChild(wrap);
+      });
+
+      const rotateRow = document.createElement('label');
+      rotateRow.className = 'cargo-rotate-row';
+      const rotateCheck = document.createElement('input');
+      rotateCheck.type = 'checkbox';
+      rotateCheck.checked = item.rotate;
+      rotateCheck.addEventListener('change', (e) => updateCargo(item.id, 'rotate', e.target.checked));
+      rotateRow.appendChild(rotateCheck);
+      rotateRow.appendChild(document.createTextNode(' 회전 허용 (최적 방향 자동 탐색)'));
+
+      card.appendChild(top);
+      card.appendChild(dims);
+      card.appendChild(rotateRow);
+      list.appendChild(card);
+    });
+  }
+
+  // ============= 적재 계산 로직 =============
+  function permutations(arr) {
+    if (arr.length <= 1) return [arr];
+    const result = [];
+    arr.forEach((item, i) => {
+      const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+      permutations(rest).forEach(p => result.push([item, ...p]));
+    });
+    return result;
+  }
+
+  function bestFit(container, box) {
+    const dimsList = box.rotate ? permutations([box.l, box.w, box.h]) : [[box.l, box.w, box.h]];
+    let best = null;
+    dimsList.forEach(([bl, bw, bh]) => {
+      if (bl <= 0 || bw <= 0 || bh <= 0) return;
+      const nx = Math.floor(container.L / bl);
+      const ny = Math.floor(container.W / bw);
+      const nz = Math.floor(container.H / bh);
+      const count = nx * ny * nz;
+      if (!best || count > best.count) best = { count, nx, ny, nz, bl, bw, bh };
+    });
+    return best || { count: 0, nx: 0, ny: 0, nz: 0, bl: box.l, bw: box.w, bh: box.h };
+  }
+
+  function computeCargoResult(container, box) {
+    const fit = bestFit(container, box);
+    const boxVolumeM3 = (box.l * box.w * box.h) / 1e6;
+    const containerVolumeM3 = (container.L * container.W * container.H) / 1e6;
+
+    const weightMax = box.weight > 0 ? Math.floor(container.payload / box.weight) : Infinity;
+    const perContainer = Math.min(fit.count, weightMax);
+
+    const fits = perContainer > 0;
+    const containersNeeded = fits ? Math.ceil(box.qty / perContainer) : null;
+    const limitedBy = fit.count <= weightMax ? 'volume' : 'weight';
+
+    const volUtil = containerVolumeM3 > 0 ? (perContainer * boxVolumeM3 / containerVolumeM3) * 100 : 0;
+    const weightUtil = container.payload > 0 ? (perContainer * box.weight / container.payload) * 100 : 0;
+
+    const lastContainerQty = fits ? (box.qty - (containersNeeded - 1) * perContainer) : 0;
+
+    return { fit, boxVolumeM3, containerVolumeM3, weightMax, perContainer, fits, containersNeeded, limitedBy, volUtil, weightUtil, lastContainerQty };
+  }
+
+  function renderResults(container) {
+    const area = document.getElementById('resultsArea');
+    area.innerHTML = '';
+
+    if (cargoItems.length === 0) {
+      area.innerHTML = '<div class="cargo-empty">화물을 등록하면 적재 계산 결과가 표시됩니다</div>';
+      return;
+    }
+
+    cargoItems.forEach(item => {
+      const r = computeCargoResult(container, item);
+      const card = document.createElement('div');
+      card.className = 'result-card' + (r.fits ? '' : ' warn');
+
+      const name = item.name && item.name.trim() ? item.name.trim() : '(미입력 품목)';
+
+      card.innerHTML = `
+        <div class="result-card-head">
+          <span class="name">${escapeHtml(name)}</span>
+          <span class="basis">개당 ${fmt2(r.boxVolumeM3)} CBM · ${fmtInt(item.weight)} kg</span>
+        </div>
+        <div class="result-stats">
+          <div class="stat-card">
+            <div class="stat-label">컨테이너당 적재</div>
+            <div class="stat-value">${fmtInt(r.perContainer)}개</div>
+            <div class="stat-sub">${r.limitedBy === 'weight' ? '중량 제한' : '부피 제한'}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">필요 컨테이너</div>
+            <div class="stat-value">${r.fits ? fmtInt(r.containersNeeded) + '대' : 'N/A'}</div>
+            <div class="stat-sub">총 ${fmtInt(item.qty)}개</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">부피 기준 최대</div>
+            <div class="stat-value">${fmtInt(r.fit.count)}개</div>
+            <div class="stat-sub">${r.fit.nx}×${r.fit.ny}×${r.fit.nz}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">중량 기준 최대</div>
+            <div class="stat-value">${r.weightMax === Infinity ? '-' : fmtInt(r.weightMax) + '개'}</div>
+            <div class="stat-sub">${fmtInt(container.payload)} kg 한도</div>
+          </div>
+        </div>
+        <div class="util-row">
+          <div class="util-label"><span>부피 적재율</span><span class="pct">${r.volUtil.toFixed(1)}%</span></div>
+          <div class="util-bar"><div class="util-fill vol" style="width:${Math.min(r.volUtil,100)}%"></div></div>
+        </div>
+        <div class="util-row">
+          <div class="util-label"><span>중량 적재율</span><span class="pct">${r.weightUtil.toFixed(1)}%</span></div>
+          <div class="util-bar"><div class="util-fill weight" style="width:${Math.min(r.weightUtil,100)}%"></div></div>
+        </div>
+        ${!r.fits ? '<div class="warn-msg">⚠ 박스 치수 또는 중량이 컨테이너 한도를 초과하여 적재할 수 없습니다.</div>' : ''}
+      `;
+      area.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderOverall(container) {
+    let totalCbm = 0, totalWeight = 0, totalContainers = 0, totalUsedCbm = 0, totalUsedWeight = 0;
+    const containerVolumeM3 = (container.L * container.W * container.H) / 1e6;
+
+    cargoItems.forEach(item => {
+      const r = computeCargoResult(container, item);
+      const boxVolumeM3 = (item.l * item.w * item.h) / 1e6;
+      totalCbm += boxVolumeM3 * item.qty;
+      totalWeight += item.weight * item.qty;
+      if (r.fits) {
+        totalContainers += r.containersNeeded;
+        totalUsedCbm += containerVolumeM3 * r.containersNeeded;
+        totalUsedWeight += container.payload * r.containersNeeded;
+      }
+    });
+
+    document.getElementById('ovCbm').textContent = fmt2(totalCbm);
+    document.getElementById('ovWeight').textContent = fmtInt(totalWeight);
+    document.getElementById('ovContainers').textContent = fmtInt(totalContainers);
+    const avgUtil = totalUsedCbm > 0 ? (totalCbm / totalUsedCbm) * 100 : 0;
+    document.getElementById('ovUtil').textContent = avgUtil.toFixed(1) + '%';
+  }
+
+  // ============= 시각화 =============
+  function renderVizOptions() {
+    const sel = document.getElementById('vizSelect');
+    const prevValue = sel.value;
+    sel.innerHTML = '';
+    if (cargoItems.length === 0) {
+      const opt = document.createElement('option');
+      opt.textContent = '화물을 등록하세요';
+      opt.value = '';
+      sel.appendChild(opt);
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    cargoItems.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = (item.name && item.name.trim()) ? item.name.trim() : `품목 #${item.id}`;
+      sel.appendChild(opt);
+    });
+    if (cargoItems.some(c => String(c.id) === prevValue)) sel.value = prevValue;
+  }
+
+  document.getElementById('vizSelect').addEventListener('change', () => renderViz(getContainerDims()));
+
+  function svgGrid(width, height, cellsX, cellsY, cellW, cellH, scale, fillVar) {
+    const w = width * scale;
+    const h = height * scale;
+    let rects = '';
+    for (let iy = 0; iy < cellsY; iy++) {
+      for (let ix = 0; ix < cellsX; ix++) {
+        const x = ix * cellW * scale + 1;
+        const y = iy * cellH * scale + 1;
+        rects += `<rect x="${x}" y="${y}" width="${cellW*scale-2}" height="${cellH*scale-2}" rx="2" fill="${fillVar}" fill-opacity="0.75" stroke="#2B4C7A" stroke-width="1" />`;
+      }
+    }
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0.5" y="0.5" width="${w-1}" height="${h-1}" fill="none" stroke="#1A1A1A" stroke-width="1.5" rx="3"/>
+      ${rects}
+    </svg>`;
+  }
+
+  function renderViz(container) {
+    const area = document.getElementById('vizArea');
+    const sel = document.getElementById('vizSelect');
+    area.innerHTML = '';
+    if (!sel.value) return;
+
+    const item = cargoItems.find(c => String(c.id) === sel.value);
+    if (!item) return;
+
+    const r = computeCargoResult(container, item);
+    const scale = 500 / container.L;
+
+    const topView = svgGrid(container.L, container.W, r.fit.nx, r.fit.ny, r.fit.bl, r.fit.bw, scale, '#2B4C7A');
+    const sideView = svgGrid(container.L, container.H, r.fit.nx, r.fit.nz, r.fit.bl, r.fit.bh, scale, '#B5532E');
+
+    area.innerHTML = `
+      <div class="viz-view">
+        <div class="viz-view-label">평면도 (Top View · 길이×폭, 1개 층 배치)</div>
+        <div class="viz-svg-wrap">${topView}</div>
+      </div>
+      <div class="viz-view">
+        <div class="viz-view-label">측면도 (Side View · 길이×높이, 적층 단면)</div>
+        <div class="viz-svg-wrap">${sideView}</div>
+      </div>
+      <div class="viz-meta">
+        <span>적재 방향 <b>${fmt2(r.fit.bl)}×${fmt2(r.fit.bw)}×${fmt2(r.fit.bh)} cm</b></span>
+        <span>배치 <b>${r.fit.nx} × ${r.fit.ny} × ${r.fit.nz}</b> (길이×폭×높이)</span>
+        <span>컨테이너당 <b>${fmtInt(r.perContainer)}개</b></span>
+      </div>
+    `;
+  }
+
+  // ============= 전체 계산 실행 =============
+  function calc() {
+    const container = getContainerDims();
+    const cbm = (container.L * container.W * container.H) / 1e6;
+
+    document.getElementById('cbmCalc').textContent = fmt2(cbm) + ' CBM';
+    document.getElementById('sbCbm').textContent = fmt2(cbm) + ' CBM';
+    document.getElementById('sbPayload').textContent = fmtInt(container.payload) + ' kg';
+
+    renderResults(container);
+    renderOverall(container);
+    renderVizOptions();
+    renderViz(container);
+  }
+
+  // 초기 예시 데이터
+  addCargo('예시 박스 A', 100, 80, 80, 15, 500, true);
+  calc();
+})();
+</script>
+</body>
+</html>
