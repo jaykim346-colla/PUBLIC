@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부산 신항 vs 북항 수입 마진 비교</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0f1c2e;
+  --slate: #1b2d44;
+  --steel: #2a4060;
+  --panel: #f6f8fb;
+  --card: #ffffff;
+  --border: #d0d8e4;
+  --text: #1a2744;
+  --text-sub: #5a6b82;
+  --accent: #2563eb;
+  --teal: #0d9488;
+  --coral: #dc2626;
+  --gold: #f59e0b;
+  --positive-bg: #ecfdf5;
+  --negative-bg: #fef2f2;
+  --badge-bg: #fef3c7;
+  --input-bg: #ffffff;
+  --input-border: #c7d2e0;
+  --mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+}
+
+html { font-size: 14px; }
+body {
+  font-family: var(--sans);
+  background: var(--panel);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: var(--navy);
+  color: #fff;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-icon {
+  width: 40px; height: 40px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+  flex-shrink: 0;
+}
+.header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+.header p { font-size: 0.8rem; color: #8fa3bf; margin-top: 2px; }
+
+/* Layout */
+.app { display: flex; gap: 0; min-height: calc(100vh - 80px); }
+.input-panel {
+  width: 420px;
+  min-width: 420px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px;
+}
+.output-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Section styling */
+.section { margin-bottom: 20px; }
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 12px;
+}
+
+.field { margin-bottom: 10px; }
+.field label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 3px;
+}
+.field input, .field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: var(--mono);
+  background: var(--input-bg);
+  transition: border-color 0.15s;
+  color: var(--text);
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.computed {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--accent);
+  background: #eff4ff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+/* Extra costs */
+.extra-item {
+  display: grid;
+  grid-template-columns: 1fr 100px auto auto;
+  gap: 6px;
+  align-items: end;
+  margin-bottom: 6px;
+}
+.extra-item input, .extra-item select {
+  padding: 7px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: var(--mono);
+  background: var(--input-bg);
+  color: var(--text);
+}
+.extra-item select {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  min-width: 120px;
+}
+.extra-item input:focus, .extra-item select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-delete {
+  width: 32px; height: 34px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--coral);
+  font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.btn-delete:hover { background: var(--negative-bg); }
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border: 1px dashed var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+.btn-add:hover { background: #eff4ff; }
+
+/* Output cards */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.port-card {
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.port-card.negative { border-color: var(--coral); }
+.port-card.better { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(13,148,136,0.15); }
+
+.port-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.port-card.negative .port-header { background: var(--negative-bg); }
+.port-card.better .port-header { background: var(--positive-bg); }
+
+.port-name {
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.port-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.shinhang-dot { background: var(--accent); }
+.bukhang-dot { background: #7c3aed; }
+
+.badge-better {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--badge-bg);
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.port-body { padding: 16px; }
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 0.85rem;
+}
+.data-row + .data-row { border-top: 1px solid #f0f2f5; }
+.data-label { color: var(--text-sub); }
+.data-value { font-family: var(--mono); font-weight: 600; text-align: right; }
+
+.data-row.highlight {
+  background: #f8fafc;
+  margin: 6px -16px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border-top: none;
+}
+.data-row.highlight .data-label { font-weight: 700; color: var(--text); }
+.data-row.highlight .data-value { font-size: 1rem; }
+
+.data-row.margin-positive .data-value { color: var(--teal); }
+.data-row.margin-negative .data-value { color: var(--coral); }
+
+.sub-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-sub);
+  padding: 10px 0 4px;
+  margin-top: 4px;
+}
+
+/* Summary */
+.summary-card {
+  background: var(--navy);
+  color: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  text-align: center;
+}
+.summary-main {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+.summary-sub {
+  font-size: 0.88rem;
+  color: #8fa3bf;
+}
+.summary-highlight {
+  color: var(--gold);
+  font-family: var(--mono);
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+  .app { flex-direction: column; }
+  .input-panel {
+    width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  html { font-size: 13px; }
+  .input-panel, .output-panel { padding: 14px; }
+  .extra-item { grid-template-columns: 1fr 80px; }
+  .extra-item select { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">⚓</div>
+  <div>
+    <h1>부산 신항 vs 북항 수입 마진 비교</h1>
+    <p>Import Margin Comparison Calculator</p>
+  </div>
+</div>
+
+<div class="app">
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+
+    <div class="section">
+      <div class="section-title">매출 청구 단가</div>
+      <div class="row2">
+        <div class="field">
+          <label>매출 단가 (USD/톤)</label>
+          <input type="text" id="usdPerTon" data-fmt="comma" value="50">
+        </div>
+        <div class="field">
+          <label>환율 (KRW/USD)</label>
+          <input type="text" id="exchangeRate" data-fmt="comma" value="1,350">
+        </div>
+      </div>
+      <div class="computed" id="perTonRevenue">톤당 매출: 67,500 원</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">물량 정보</div>
+      <div class="row2">
+        <div class="field">
+          <label>월 물량 (톤)</label>
+          <input type="text" id="monthlyTons" data-fmt="comma" value="500">
+        </div>
+        <div class="field">
+          <label>컨테이너당 적재량 (톤)</label>
+          <input type="text" id="tonsPerContainer" data-fmt="comma" value="20">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>탱크로리 기본중량 (톤)</label>
+          <input type="text" id="tonsPerTanker" data-fmt="comma" value="18">
+        </div>
+        <div class="field">
+          <label>탱크로리 운송단가 (원/톤)</label>
+          <input type="text" id="tankerCostPerTon" data-fmt="comma" value="15,000">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">매입 원가</div>
+      <div class="field">
+        <label>작업료 (원/톤·디베닝)</label>
+        <input type="text" id="workCostPerTon" data-fmt="comma" value="5,000">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>신항 셔틀료 (원/대)</label>
+          <input type="text" id="shuttleShin" data-fmt="comma" value="350,000">
+        </div>
+        <div class="field">
+          <label>북항 셔틀료 (원/대)</label>
+          <input type="text" id="shuttleBuk" data-fmt="comma" value="250,000">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">기타 비용</div>
+      <div id="extraCosts"></div>
+      <button class="btn-add" onclick="addExtraCost()">＋ 추가</button>
+    </div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="output-panel">
+    <div class="compare-grid" id="compareGrid">
+      <!-- filled by JS -->
+    </div>
+    <div class="summary-card" id="summaryCard">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utility ──
+function parseNum(str) {
+  if (!str) return 0;
+  return parseFloat(String(str).replace(/,/g, '')) || 0;
+}
+
+function fmt(n) {
+  if (isNaN(n) || !isFinite(n)) return '0';
+  const neg = n < 0;
+  const abs = Math.abs(Math.round(n));
+  const s = abs.toLocaleString('ko-KR');
+  return neg ? '-' + s : s;
+}
+
+function fmtPct(n) {
+  if (isNaN(n) || !isFinite(n)) return '0.0';
+  return n.toFixed(1);
+}
+
+// ── Comma formatting with cursor preservation ──
+function applyCommaFormat(input) {
+  input.addEventListener('input', function() {
+    const raw = this.value.replace(/,/g, '');
+    if (raw === '' || raw === '-') return;
+    const cursorFromEnd = this.value.length - this.selectionStart;
+    const num = parseFloat(raw);
+    if (isNaN(num)) return;
+    // Preserve decimals
+    const parts = raw.split('.');
+    let formatted = parseInt(parts[0]).toLocaleString('ko-KR');
+    if (parts.length > 1) formatted += '.' + parts[1];
+    this.value = formatted;
+    const newPos = this.value.length - cursorFromEnd;
+    this.setSelectionRange(Math.max(0, newPos), Math.max(0, newPos));
+    recalc();
+  });
+}
+
+// Init comma fields
+document.querySelectorAll('[data-fmt="comma"]').forEach(applyCommaFormat);
+
+// ── Extra costs ──
+let extraId = 0;
+function addExtraCost(name, amount, unit) {
+  extraId++;
+  const container = document.getElementById('extraCosts');
+  const div = document.createElement('div');
+  div.className = 'extra-item';
+  div.id = 'extra-' + extraId;
+  div.innerHTML = `
+    <input type="text" placeholder="항목명" value="${name || ''}" class="extra-name">
+    <input type="text" data-fmt="comma" placeholder="금액" value="${amount || ''}" class="extra-amount">
+    <select class="extra-unit">
+      <option value="monthly" ${unit==='monthly'?'selected':''}>원/월(고정)</option>
+      <option value="ton" ${unit==='ton'?'selected':''}>원/톤</option>
+      <option value="container" ${unit==='container'?'selected':''}>원/대(컨테이너)</option>
+      <option value="tanker" ${unit==='tanker'?'selected':''}>원/대(탱크로리)</option>
+    </select>
+    <button class="btn-delete" onclick="removeExtra(${extraId})">✕</button>
+  `;
+  container.appendChild(div);
+  // bind comma + recalc
+  const amtInput = div.querySelector('.extra-amount');
+  applyCommaFormat(amtInput);
+  div.querySelector('.extra-name').addEventListener('input', recalc);
+  div.querySelector('.extra-unit').addEventListener('change', recalc);
+  recalc();
+}
+
+function removeExtra(id) {
+  const el = document.getElementById('extra-' + id);
+  if (el) el.remove();
+  recalc();
+}
+
+function getExtras() {
+  const items = [];
+  document.querySelectorAll('.extra-item').forEach(div => {
+    items.push({
+      name: div.querySelector('.extra-name').value || '기타',
+      amount: parseNum(div.querySelector('.extra-amount').value),
+      unit: div.querySelector('.extra-unit').value
+    });
+  });
+  return items;
+}
+
+// ── Calculation ──
+function calcPort(label, shuttleCost) {
+  const usd = parseNum(document.getElementById('usdPerTon').value);
+  const rate = parseNum(document.getElementById('exchangeRate').value);
+  const monthly = parseNum(document.getElementById('monthlyTons').value);
+  const tpc = parseNum(document.getElementById('tonsPerContainer').value);
+  const tpt = parseNum(document.getElementById('tonsPerTanker').value);
+  const tankerUnit = parseNum(document.getElementById('tankerCostPerTon').value);
+  const workCost = parseNum(document.getElementById('workCostPerTon').value);
+
+  const containers = tpc > 0 ? Math.ceil(monthly / tpc) : 0;
+  const tankers = tpt > 0 ? Math.ceil(monthly / tpt) : 0;
+
+  const revenue = monthly * usd * rate;
+  const workTotal = monthly * workCost;
+  const shuttleTotal = containers * shuttleCost;
+  const tankerTotal = tankers * tpt * tankerUnit;
+
+  // extras
+  const extras = getExtras();
+  let extraTotal = 0;
+  const extraDetails = [];
+  extras.forEach(e => {
+    let val = 0;
+    switch (e.unit) {
+      case 'monthly': val = e.amount; break;
+      case 'ton': val = e.amount * monthly; break;
+      case 'container': val = e.amount * containers; break;
+      case 'tanker': val = e.amount * tankers; break;
+    }
+    extraTotal += val;
+    extraDetails.push({ name: e.name, val });
+  });
+
+  const totalCost = workTotal + shuttleTotal + tankerTotal + extraTotal;
+  const margin = revenue - totalCost;
+  const marginRate = revenue > 0 ? (margin / revenue) * 100 : 0;
+  const marginPerTon = monthly > 0 ? margin / monthly : 0;
+  const annual = margin * 12;
+
+  return {
+    label, containers, tankers,
+    revenue, workTotal, shuttleTotal, tankerTotal,
+    extraDetails, extraTotal, totalCost,
+    margin, marginRate, marginPerTon, annual
+  };
+}
+
+function renderCard(data, isBetter) {
+  const isNeg = data.margin < 0;
+  const dotClass = data.label === '신항' ? 'shinhang-dot' : 'bukhang-dot';
+  let cls = 'port-card';
+  if (isNeg) cls += ' negative';
+  else if (isBetter) cls += ' better';
+
+  let extraRows = '';
+  data.extraDetails.forEach(e => {
+    extraRows += `<div class="data-row"><span class="data-label">${e.name}</span><span class="data-value">${fmt(e.val)} 원</span></div>`;
+  });
+
+  const marginClass = isNeg ? 'margin-negative' : 'margin-positive';
+
+  return `
+  <div class="${cls}">
+    <div class="port-header">
+      <span class="port-name"><span class="port-dot ${dotClass}"></span>${data.label}</span>
+      ${isBetter ? '<span class="badge-better">★ Better</span>' : ''}
+    </div>
+    <div class="port-body">
+      <div class="data-row">
+        <span class="data-label">컨테이너 수</span>
+        <span class="data-value">${fmt(data.containers)} 대</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">탱크로리 수</span>
+        <span class="data-value">${fmt(data.tankers)} 대</span>
+      </div>
+
+      <div class="data-row highlight">
+        <span class="data-label">매출</span>
+        <span class="data-value">${fmt(data.revenue)} 원</span>
+      </div>
+
+      <div class="sub-header">매입 원가 내역</div>
+      <div class="data-row">
+        <span class="data-label">작업료</span>
+        <span class="data-value">${fmt(data.workTotal)} 원</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">셔틀료</span>
+        <span class="data-value">${fmt(data.shuttleTotal)} 원</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">탱크로리</span>
+        <span class="data-value">${fmt(data.tankerTotal)} 원</span>
+      </div>
+      ${extraRows}
+      <div class="data-row highlight">
+        <span class="data-label">매입 원가 합계</span>
+        <span class="data-value">${fmt(data.totalCost)} 원</span>
+      </div>
+
+      <div class="sub-header">마진 분석</div>
+      <div class="data-row ${marginClass}">
+        <span class="data-label">월간 마진</span>
+        <span class="data-value">${fmt(data.margin)} 원</span>
+      </div>
+      <div class="data-row ${marginClass}">
+        <span class="data-label">마진율</span>
+        <span class="data-value">${fmtPct(data.marginRate)}%</span>
+      </div>
+      <div class="data-row ${marginClass}">
+        <span class="data-label">톤당 마진</span>
+        <span class="data-value">${fmt(data.marginPerTon)} 원</span>
+      </div>
+      <div class="data-row ${marginClass}">
+        <span class="data-label">연간 마진</span>
+        <span class="data-value">${fmt(data.annual)} 원</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function recalc() {
+  // Per-ton revenue display
+  const usd = parseNum(document.getElementById('usdPerTon').value);
+  const rate = parseNum(document.getElementById('exchangeRate').value);
+  document.getElementById('perTonRevenue').textContent = '톤당 매출: ' + fmt(usd * rate) + ' 원';
+
+  const shin = calcPort('신항', parseNum(document.getElementById('shuttleShin').value));
+  const buk = calcPort('북항', parseNum(document.getElementById('shuttleBuk').value));
+
+  const shinBetter = shin.margin > buk.margin;
+  const bukBetter = buk.margin > shin.margin;
+
+  document.getElementById('compareGrid').innerHTML =
+    renderCard(shin, shinBetter) + renderCard(buk, bukBetter);
+
+  // Summary
+  const diff = Math.abs(shin.margin - buk.margin);
+  const annualDiff = diff * 12;
+  let winner, summaryText;
+
+  if (shin.margin === buk.margin) {
+    summaryText = `<div class="summary-main">신항과 북항의 월간 마진이 동일합니다</div>`;
+  } else {
+    winner = shin.margin > buk.margin ? '신항' : '북항';
+    summaryText = `
+      <div class="summary-main">
+        ${winner}이 월 <span class="summary-highlight">${fmt(diff)}</span> 원 더 유리
+      </div>
+      <div class="summary-sub">
+        연간 차액 <span class="summary-highlight">${fmt(annualDiff)}</span> 원
+      </div>`;
+  }
+  document.getElementById('summaryCard').innerHTML = summaryText;
+}
+
+// Bind all inputs
+document.querySelectorAll('.input-panel input, .input-panel select').forEach(el => {
+  el.addEventListener('input', recalc);
+  el.addEventListener('change', recalc);
+});
+
+// Initial calc
+recalc();
+</script>
+</body>
+</html>

@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>수입 마진 계산기</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface-soft: #EFEBE3;
+    --ink: #1A1A1A;
+    --ink-soft: #5C5A55;
+    --ink-faint: #8E8B83;
+    --line: rgba(26, 26, 26, 0.08);
+    --line-strong: rgba(26, 26, 26, 0.15);
+    --accent: #1B5E4A;
+    --accent-soft: #E1EFE9;
+    --accent-deep: #0D3D2E;
+    --warm: #B5532E;
+    --warm-soft: #FBEDE5;
+    --danger: #A23F32;
+    --danger-soft: #F8E4E0;
+    --gold: #8A6A1E;
+    --gold-soft: #F5EDD9;
+
+    /* Port colors */
+    --port-a: #2B4C7A;       /* 신항 navy */
+    --port-a-soft: #E4ECF5;
+    --port-a-deep: #15263D;
+    --port-b: #6B4423;       /* 북항 brown */
+    --port-b-soft: #F0E7DC;
+    --port-b-deep: #3D2614;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-feature-settings: "ss06";
+  }
+
+  .container {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: flex-end;
+  }
+  .header-left .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .header .subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 0.05em;
+  }
+
+  /* Revenue rate display (top right) */
+  .revenue-rate {
+    background: var(--ink);
+    color: #F7F5F0;
+    border-radius: 4px;
+    padding: 16px 22px;
+    min-width: 280px;
+  }
+  .revenue-rate .rr-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: rgba(247, 245, 240, 0.6);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .rr-inputs {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .rr-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .rr-field label {
+    font-size: 10px;
+    color: rgba(247, 245, 240, 0.5);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .rr-field input {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #F7F5F0;
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    width: 100%;
+    transition: all 0.15s ease;
+  }
+  .rr-field input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .rr-multiply {
+    color: rgba(247, 245, 240, 0.4);
+    font-size: 16px;
+    padding-top: 18px;
+  }
+  .rr-formula {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(247, 245, 240, 0.1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: rgba(247, 245, 240, 0.7);
+    text-align: right;
+  }
+  .rr-formula .result {
+    color: #F7F5F0;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  /* Layout */
+  .grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 32px;
+  }
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* Section */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .section + .section { margin-top: 20px; }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-title .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .section-title h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  /* Form */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+  }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field label .unit {
+    color: var(--ink-faint);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .field input {
+    width: 100%;
+    padding: 9px 11px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field input:hover {
+    border-color: var(--line-strong);
+  }
+
+  /* Port-specific input styling */
+  .field.port-a input { border-left: 3px solid var(--port-a); }
+  .field.port-b input { border-left: 3px solid var(--port-b); }
+
+  /* Comparison area */
+  .comparison-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .port-tab {
+    padding: 14px 18px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .port-tab.a {
+    background: var(--port-a);
+    color: white;
+  }
+  .port-tab.b {
+    background: var(--port-b);
+    color: white;
+  }
+  .port-tab .port-name {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .port-tab .port-shuttle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  /* Comparison body */
+  .comparison-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .port-result {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 22px;
+  }
+  .port-result.a { border-top: 3px solid var(--port-a); }
+  .port-result.b { border-top: 3px solid var(--port-b); }
+
+  /* Operation counts */
+  .ops-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .op-card {
+    padding: 11px 12px;
+    border-radius: 3px;
+    background: var(--bg);
+  }
+  .op-card .op-label {
+    font-size: 10px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .op-card .op-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .op-card .op-basis {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  /* Revenue/cost rows */
+  .ledger {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+  .ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    font-size: 12px;
+  }
+  .ledger-row.major {
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+  }
+  .ledger-row.major.revenue { color: var(--accent-deep); }
+  .ledger-row.major.cost { color: var(--warm); }
+  .ledger-row .label { color: var(--ink-soft); }
+  .ledger-row.major .label { color: inherit; }
+  .ledger-row .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .ledger-row.sub {
+    padding: 3px 0;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+  .ledger-row.sub .label::before {
+    content: '└ ';
+    margin-right: 2px;
+  }
+  .ledger-row.sub .value {
+    color: var(--ink-soft);
+    font-size: 11px;
+  }
+
+  /* Final margin display */
+  .margin-display {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .port-result.a .margin-display {
+    background: var(--port-a-soft);
+    border: 1px solid #C9D6E5;
+  }
+  .port-result.b .margin-display {
+    background: var(--port-b-soft);
+    border: 1px solid #DDCAB4;
+  }
+  .margin-display.negative {
+    background: var(--danger-soft) !important;
+    border-color: #E8C9C2 !important;
+  }
+  .margin-display .label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .port-result.a .margin-display .label { color: var(--port-a); }
+  .port-result.b .margin-display .label { color: var(--port-b); }
+  .margin-display.negative .label { color: var(--danger) !important; }
+  .margin-display .amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .port-result.a .margin-display .amount { color: var(--port-a-deep); }
+  .port-result.b .margin-display .amount { color: var(--port-b-deep); }
+  .margin-display.negative .amount { color: #5C2620 !important; }
+  .margin-display .meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    font-size: 11px;
+  }
+  .margin-display .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .margin-display .meta-label {
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .port-result.a .margin-display .meta-label { color: var(--port-a); }
+  .port-result.b .margin-display .meta-label { color: var(--port-b); }
+  .margin-display .meta-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .port-result.a .margin-display .meta-value { color: var(--port-a-deep); }
+  .port-result.b .margin-display .meta-value { color: var(--port-b-deep); }
+
+  /* Winner badge */
+  .winner-badge {
+    position: absolute;
+    top: -8px;
+    right: 14px;
+    background: #1A1A1A;
+    color: #F7F5F0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Annual card */
+  .annual-row {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+  }
+  .annual-row .annual-label {
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .annual-row .annual-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  /* Comparison summary */
+  .delta-summary {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: var(--gold-soft);
+    border-left: 3px solid var(--gold);
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .delta-summary .delta-label {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .delta-summary .delta-text {
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .delta-summary .delta-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  /* Extras section */
+  .extras-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line-strong);
+  }
+  .extras-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .extras-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+  .extras-title .extras-count {
+    color: var(--ink-faint);
+    font-weight: 400;
+    margin-left: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .add-extra-btn {
+    background: var(--ink);
+    color: #F7F5F0;
+    border: none;
+    padding: 6px 13px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s ease;
+  }
+  .add-extra-btn:hover {
+    background: #333;
+    transform: translateY(-1px);
+  }
+  .extras-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .extras-empty {
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-style: italic;
+    text-align: center;
+    padding: 14px;
+    background: var(--bg);
+    border-radius: 3px;
+    border: 1px dashed var(--line);
+  }
+  .extra-item {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 0.95fr 30px;
+    gap: 6px;
+    align-items: center;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .extra-item input,
+  .extra-item select {
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    width: 100%;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .extra-item input[type="text"] {
+    font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  }
+  .extra-item select {
+    font-family: 'Pretendard Variable', Pretendard, sans-serif;
+    cursor: pointer;
+  }
+  .extra-item input:focus,
+  .extra-item select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .extra-delete {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    cursor: pointer;
+    border-radius: 3px;
+    height: 32px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .extra-delete:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  /* Footnote */
+  .footnote {
+    margin-top: 14px;
+    font-size: 10px;
+    color: var(--ink-faint);
+    font-style: italic;
+    line-height: 1.6;
+    padding-left: 10px;
+    border-left: 2px solid var(--line);
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 10px;
+    color: var(--ink-faint);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* Mobile */
+  @media (max-width: 700px) {
+    body { padding: 20px 14px; }
+    .header { grid-template-columns: 1fr; }
+    .header h1 { font-size: 24px; }
+    .section { padding: 18px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .comparison-header { grid-template-columns: 1fr; }
+    .comparison-body { grid-template-columns: 1fr; }
+    .revenue-rate { min-width: auto; }
+  }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="header-left">
+      <div class="eyebrow">Import Margin Calculator · 신항 vs 북항</div>
+      <h1>수입 마진 계산기</h1>
+      <div class="subtitle">20FT · DEVANNING · TANK LORRY</div>
+    </div>
+    <div class="revenue-rate">
+      <div class="rr-label">매출 청구 단가</div>
+      <div class="rr-inputs">
+        <div class="rr-field">
+          <label>USD / 톤</label>
+          <input type="text" inputmode="decimal" id="usdPerTon" value="60" step="1" />
+        </div>
+        <div class="rr-multiply">×</div>
+        <div class="rr-field">
+          <label>환율</label>
+          <input type="text" inputmode="decimal" id="fx" value="1450" step="10" />
+        </div>
+      </div>
+      <div class="rr-formula">
+        톤당 매출 <span class="result" id="revenuePerTon">87,000원</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: Inputs -->
+    <div>
+
+      <div class="section">
+        <div class="section-title">
+          <span class="num">01</span>
+          <h2>물량 정보</h2>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>월 물량 <span class="unit">톤</span></label>
+            <input type="text" inputmode="decimal" id="monthlyTons" value="500" step="10" />
+          </div>
+          <div class="field">
+            <label>컨테이너당 <span class="unit">톤</span></label>
+            <input type="text" inputmode="decimal" id="tons" value="23" step="0.1" />
+          </div>
+          <div class="field">
+            <label>탱크로리 기본중량 <span class="unit">톤</span></label>
+            <input type="text" inputmode="decimal" id="truckTons" value="26.5" step="0.1" />
+          </div>
+          <div class="field">
+            <label>탱크로리 운송 <span class="unit">원/톤</span></label>
+            <input type="text" inputmode="decimal" id="truckFee" value="45000" step="1000" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <span class="num">02</span>
+          <h2>매입 원가</h2>
+        </div>
+        <div class="form-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label>작업료 <span class="unit">원/톤 · 디베닝</span></label>
+            <input type="text" inputmode="decimal" id="workFee" value="13000" step="500" />
+          </div>
+          <div class="field port-a">
+            <label>신항 셔틀료 <span class="unit">원/대</span></label>
+            <input type="text" inputmode="decimal" id="shuttleA" value="289700" step="100" />
+          </div>
+          <div class="field port-b">
+            <label>북항 셔틀료 <span class="unit">원/대</span></label>
+            <input type="text" inputmode="decimal" id="shuttleB" value="258240" step="100" />
+          </div>
+        </div>
+
+        <div class="extras-section">
+          <div class="extras-header">
+            <span class="extras-title">기타 비용 <span class="extras-count" id="extrasCount">(0)</span></span>
+            <button type="button" class="add-extra-btn" id="addExtraBtn">+ 추가</button>
+          </div>
+          <div class="extras-list" id="extrasList"></div>
+        </div>
+
+        <p class="footnote">
+          입항지별 셔틀료에는 중량할증 20%가 이미 반영되어 있습니다. 보관료는 실비 처리되어 마진 계산에서 제외됩니다.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Comparison Results -->
+    <div>
+
+      <div class="comparison-header">
+        <div class="port-tab a">
+          <span class="port-name">신항</span>
+          <span class="port-shuttle" id="tabA">289,700 원/대</span>
+        </div>
+        <div class="port-tab b">
+          <span class="port-name">북항</span>
+          <span class="port-shuttle" id="tabB">258,240 원/대</span>
+        </div>
+      </div>
+
+      <div class="comparison-body">
+
+        <!-- 신항 -->
+        <div class="port-result a" id="resultA">
+          <div class="ops-grid">
+            <div class="op-card">
+              <div class="op-label">컨테이너</div>
+              <div class="op-count" id="containerCount_a">22대</div>
+              <div class="op-basis" id="containerBasis_a">500 ÷ 23</div>
+            </div>
+            <div class="op-card">
+              <div class="op-label">탱크로리</div>
+              <div class="op-count" id="truckCount_a">19대</div>
+              <div class="op-basis" id="truckBasis_a">500 ÷ 26.5</div>
+            </div>
+          </div>
+          <div class="ledger">
+            <div class="ledger-row major revenue">
+              <span class="label">매출</span>
+              <span class="value" id="revenue_a">0원</span>
+            </div>
+            <div class="ledger-row major cost">
+              <span class="label">매입 원가</span>
+              <span class="value" id="cost_a">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">작업료</span>
+              <span class="value" id="work_a">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">셔틀료</span>
+              <span class="value" id="shuttleTotal_a">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">탱크로리</span>
+              <span class="value" id="truck_a">0원</span>
+            </div>
+            <div id="extrasRows_a"></div>
+          </div>
+          <div class="margin-display" id="marginCard_a">
+            <div class="label">월간 마진</div>
+            <div class="amount" id="margin_a">0원</div>
+            <div class="meta">
+              <div class="meta-item">
+                <span class="meta-label">마진율</span>
+                <span class="meta-value" id="marginRate_a">0%</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">톤당</span>
+                <span class="meta-value" id="marginPerTon_a">0원</span>
+              </div>
+            </div>
+          </div>
+          <div class="annual-row">
+            <span class="annual-label">연간 (× 12)</span>
+            <span class="annual-amount" id="annual_a">0원</span>
+          </div>
+        </div>
+
+        <!-- 북항 -->
+        <div class="port-result b" id="resultB">
+          <div class="ops-grid">
+            <div class="op-card">
+              <div class="op-label">컨테이너</div>
+              <div class="op-count" id="containerCount_b">22대</div>
+              <div class="op-basis" id="containerBasis_b">500 ÷ 23</div>
+            </div>
+            <div class="op-card">
+              <div class="op-label">탱크로리</div>
+              <div class="op-count" id="truckCount_b">19대</div>
+              <div class="op-basis" id="truckBasis_b">500 ÷ 26.5</div>
+            </div>
+          </div>
+          <div class="ledger">
+            <div class="ledger-row major revenue">
+              <span class="label">매출</span>
+              <span class="value" id="revenue_b">0원</span>
+            </div>
+            <div class="ledger-row major cost">
+              <span class="label">매입 원가</span>
+              <span class="value" id="cost_b">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">작업료</span>
+              <span class="value" id="work_b">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">셔틀료</span>
+              <span class="value" id="shuttleTotal_b">0원</span>
+            </div>
+            <div class="ledger-row sub">
+              <span class="label">탱크로리</span>
+              <span class="value" id="truck_b">0원</span>
+            </div>
+            <div id="extrasRows_b"></div>
+          </div>
+          <div class="margin-display" id="marginCard_b">
+            <div class="label">월간 마진</div>
+            <div class="amount" id="margin_b">0원</div>
+            <div class="meta">
+              <div class="meta-item">
+                <span class="meta-label">마진율</span>
+                <span class="meta-value" id="marginRate_b">0%</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">톤당</span>
+                <span class="meta-value" id="marginPerTon_b">0원</span>
+              </div>
+            </div>
+          </div>
+          <div class="annual-row">
+            <span class="annual-label">연간 (× 12)</span>
+            <span class="annual-amount" id="annual_b">0원</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="delta-summary">
+        <div>
+          <span class="delta-label">📍 입항지 비교 </span>
+          <span class="delta-text" id="deltaText">— 항이 월 — 원 유리</span>
+        </div>
+        <div>
+          <span class="delta-text">연간 차이 </span>
+          <span class="delta-amount" id="deltaAnnual">0원</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    이 계산기는 보관료를 제외한 변동원가 기준 공헌이익을 산출합니다.
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  const fmt = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  const fmtPlain = (n) => Math.round(n).toLocaleString('ko-KR');
+  const ids = ['monthlyTons','tons','truckTons','usdPerTon','fx','workFee','shuttleA','shuttleB','truckFee'];
+
+  // ============= 콤마 포맷팅 =============
+  function formatWithCommas(str) {
+    let cleaned = String(str).replace(/[^0-9.\-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') return cleaned;
+    const parts = cleaned.split('.');
+    let integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? '.' + parts.slice(1).join('') : '';
+    let negative = '';
+    if (integerPart.startsWith('-')) {
+      negative = '-';
+      integerPart = integerPart.slice(1);
+    }
+    if (integerPart) {
+      integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    return negative + integerPart + decimalPart;
+  }
+
+  function parseFormatted(str) {
+    if (str === null || str === undefined) return 0;
+    return parseFloat(String(str).replace(/,/g, '')) || 0;
+  }
+
+  function applyCommaFormat(input) {
+    input.value = formatWithCommas(input.value);
+    input.addEventListener('input', function(e) {
+      const cursorPos = e.target.selectionStart;
+      const oldValue = e.target.value;
+      const digitsBeforeCursor = (oldValue.slice(0, cursorPos).match(/[\d.\-]/g) || []).length;
+      const formatted = formatWithCommas(oldValue);
+      if (formatted === oldValue) return;
+      e.target.value = formatted;
+      let newPos = 0;
+      let count = 0;
+      for (let i = 0; i < formatted.length; i++) {
+        if (/[\d.\-]/.test(formatted[i])) {
+          count++;
+          if (count === digitsBeforeCursor) {
+            newPos = i + 1;
+            break;
+          }
+        }
+      }
+      if (digitsBeforeCursor === 0) newPos = 0;
+      try { e.target.setSelectionRange(newPos, newPos); } catch (err) {}
+    });
+  }
+
+  // 정적 input에 포맷팅 적용
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) applyCommaFormat(el);
+  });
+
+  // ============= 기타비용 관리 =============
+  let extras = [];
+  let nextExtraId = 1;
+
+  const UNIT_OPTIONS = [
+    { value: 'month', label: '원/월 (고정)' },
+    { value: 'ton', label: '원/톤' },
+    { value: 'container', label: '원/대 (컨테이너)' },
+    { value: 'truck', label: '원/대 (탱크로리)' }
+  ];
+
+  function addExtra(name = '', amount = 0, unit = 'month') {
+    extras.push({ id: nextExtraId++, name, amount, unit });
+    renderExtras();
+    calc();
+  }
+
+  function removeExtra(id) {
+    extras = extras.filter(e => e.id !== id);
+    renderExtras();
+    calc();
+  }
+
+  function updateExtra(id, field, value) {
+    const item = extras.find(e => e.id === id);
+    if (item) {
+      item[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+      calc();
+    }
+  }
+
+  function renderExtras() {
+    const list = document.getElementById('extrasList');
+    const count = document.getElementById('extrasCount');
+    count.textContent = `(${extras.length})`;
+
+    if (extras.length === 0) {
+      list.innerHTML = '<div class="extras-empty">+ 추가 버튼으로 통관료, 보험료, 인건비 등의 항목을 추가하세요</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    extras.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'extra-item';
+
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = '항목명';
+      nameInput.value = item.name;
+      nameInput.addEventListener('input', (e) => updateExtra(item.id, 'name', e.target.value));
+
+      const amountInput = document.createElement('input');
+      amountInput.type = 'text';
+      amountInput.inputMode = 'decimal';
+      amountInput.placeholder = '0';
+      amountInput.value = item.amount ? formatWithCommas(String(item.amount)) : '';
+      applyCommaFormat(amountInput);
+      amountInput.addEventListener('input', (e) => updateExtra(item.id, 'amount', parseFormatted(e.target.value)));
+
+      const unitSelect = document.createElement('select');
+      UNIT_OPTIONS.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        if (opt.value === item.unit) o.selected = true;
+        unitSelect.appendChild(o);
+      });
+      unitSelect.addEventListener('change', (e) => updateExtra(item.id, 'unit', e.target.value));
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'extra-delete';
+      deleteBtn.innerHTML = '×';
+      deleteBtn.title = '삭제';
+      deleteBtn.addEventListener('click', () => removeExtra(item.id));
+
+      row.appendChild(nameInput);
+      row.appendChild(amountInput);
+      row.appendChild(unitSelect);
+      row.appendChild(deleteBtn);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('addExtraBtn').addEventListener('click', () => addExtra());
+
+  // ============= 계산 로직 =============
+  function computeExtraItem(extra, monthlyTons, containers, trucks) {
+    const amt = parseFloat(extra.amount) || 0;
+    if (extra.unit === 'ton') return amt * monthlyTons;
+    if (extra.unit === 'container') return amt * containers;
+    if (extra.unit === 'truck') return amt * trucks;
+    if (extra.unit === 'month') return amt;
+    return 0;
+  }
+
+  function computeExtrasTotal(monthlyTons, containers, trucks) {
+    let total = 0;
+    extras.forEach(e => {
+      total += computeExtraItem(e, monthlyTons, containers, trucks);
+    });
+    return total;
+  }
+
+  const UNIT_LABEL = {
+    'month': '월',
+    'ton': '톤',
+    'container': '컨',
+    'truck': '탱'
+  };
+
+  function renderExtraRows(suffix, monthlyTons, containers, trucks) {
+    const container = document.getElementById('extrasRows_' + suffix);
+    container.innerHTML = '';
+    extras.forEach(e => {
+      const amount = computeExtraItem(e, monthlyTons, containers, trucks);
+      const row = document.createElement('div');
+      row.className = 'ledger-row sub';
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'label';
+      const name = (e.name && e.name.trim()) ? e.name.trim() : '(미입력)';
+      labelEl.innerHTML = name + ` <span style="color: var(--ink-faint); font-family: 'JetBrains Mono', monospace; font-size: 10px; margin-left: 2px;">[${UNIT_LABEL[e.unit] || ''}]</span>`;
+
+      const valueEl = document.createElement('span');
+      valueEl.className = 'value';
+      valueEl.textContent = fmt(amount);
+
+      row.appendChild(labelEl);
+      row.appendChild(valueEl);
+      container.appendChild(row);
+    });
+  }
+
+  function computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttle, truck) {
+    const containers = tons > 0 ? Math.ceil(monthlyTons / tons) : 0;
+    const trucks = truckTons > 0 ? Math.ceil(monthlyTons / truckTons) : 0;
+    const revenue = monthlyTons * usd * fx;
+    const workTotal = monthlyTons * work;
+    const shuttleTotal = containers * shuttle;
+    const truckTotal = trucks * truckTons * truck;
+    const extrasTotal = computeExtrasTotal(monthlyTons, containers, trucks);
+    const cost = workTotal + shuttleTotal + truckTotal + extrasTotal;
+    const margin = revenue - cost;
+    const marginRate = revenue > 0 ? (margin / revenue * 100) : 0;
+    const marginPerTon = monthlyTons > 0 ? margin / monthlyTons : 0;
+    return { containers, trucks, revenue, workTotal, shuttleTotal, truckTotal, extrasTotal, cost, margin, marginRate, marginPerTon };
+  }
+
+  function renderPort(suffix, r, monthlyTons, tons, truckTons) {
+    document.getElementById('containerCount_' + suffix).textContent = r.containers + '대';
+    document.getElementById('containerBasis_' + suffix).textContent = `${monthlyTons} ÷ ${tons}`;
+    document.getElementById('truckCount_' + suffix).textContent = r.trucks + '대';
+    document.getElementById('truckBasis_' + suffix).textContent = `${monthlyTons} ÷ ${truckTons}`;
+    document.getElementById('revenue_' + suffix).textContent = fmt(r.revenue);
+    document.getElementById('cost_' + suffix).textContent = fmt(r.cost);
+    document.getElementById('work_' + suffix).textContent = fmt(r.workTotal);
+    document.getElementById('shuttleTotal_' + suffix).textContent = fmt(r.shuttleTotal);
+    document.getElementById('truck_' + suffix).textContent = fmt(r.truckTotal);
+    renderExtraRows(suffix, monthlyTons, r.containers, r.trucks);
+    document.getElementById('margin_' + suffix).textContent = fmt(r.margin);
+    document.getElementById('marginRate_' + suffix).textContent = r.marginRate.toFixed(1) + '%';
+    document.getElementById('marginPerTon_' + suffix).textContent = fmt(r.marginPerTon);
+    document.getElementById('annual_' + suffix).textContent = fmt(r.margin * 12);
+
+    const card = document.getElementById('marginCard_' + suffix);
+    if (r.margin < 0) card.classList.add('negative');
+    else card.classList.remove('negative');
+  }
+
+  function calc() {
+    const monthlyTons = parseFormatted(document.getElementById('monthlyTons').value);
+    const tons = parseFormatted(document.getElementById('tons').value);
+    const truckTons = parseFormatted(document.getElementById('truckTons').value);
+    const usd = parseFormatted(document.getElementById('usdPerTon').value);
+    const fx = parseFormatted(document.getElementById('fx').value);
+    const work = parseFormatted(document.getElementById('workFee').value);
+    const shuttleA = parseFormatted(document.getElementById('shuttleA').value);
+    const shuttleB = parseFormatted(document.getElementById('shuttleB').value);
+    const truck = parseFormatted(document.getElementById('truckFee').value);
+
+    document.getElementById('revenuePerTon').textContent = fmt(usd * fx);
+    document.getElementById('tabA').textContent = fmtPlain(shuttleA) + ' 원/대';
+    document.getElementById('tabB').textContent = fmtPlain(shuttleB) + ' 원/대';
+
+    const a = computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttleA, truck);
+    const b = computePort(monthlyTons, tons, truckTons, usd, fx, work, shuttleB, truck);
+
+    renderPort('a', a, monthlyTons, tons, truckTons);
+    renderPort('b', b, monthlyTons, tons, truckTons);
+
+    // Winner badge
+    document.querySelectorAll('.winner-badge').forEach(el => el.remove());
+    if (a.margin !== b.margin) {
+      const winner = a.margin > b.margin ? 'a' : 'b';
+      const badge = document.createElement('div');
+      badge.className = 'winner-badge';
+      badge.textContent = '★ Better';
+      document.getElementById('marginCard_' + winner).appendChild(badge);
+    }
+
+    // Delta summary
+    const diff = Math.abs(a.margin - b.margin);
+    const better = a.margin > b.margin ? '신항' : (b.margin > a.margin ? '북항' : '동일');
+    if (better === '동일') {
+      document.getElementById('deltaText').textContent = '두 항의 마진이 동일합니다';
+    } else {
+      document.getElementById('deltaText').textContent = `${better}이 월 ${fmt(diff)} 더 유리`;
+    }
+    document.getElementById('deltaAnnual').textContent = fmt(diff * 12);
+  }
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calc);
+  });
+
+  renderExtras();
+  calc();
+})();
+</script>
+</body>
+</html>
